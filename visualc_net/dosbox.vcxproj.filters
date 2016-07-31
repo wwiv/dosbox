@@ -712,4 +712,7 @@
   <ItemGroup>
     <Image Include="..\src\dosbox.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\deps\SDL2-2.0.4\VisualC\SDL\SDL.vcxproj" />
+  </ItemGroup>
 </Project>
