@@ -31,9 +31,6 @@
 #include <signal.h>
 #include <process.h>
 #endif
-#ifdef __ANDROID__
-#include <android/log.h>
-#endif
 
 #include "cross.h"
 #include "SDL.h"
@@ -64,11 +61,7 @@
 //#define DISABLE_JOYSTICK
 
 #if C_OPENGL
-#ifdef __ANDROID__
-#include "SDL_opengles.h"
-#else
 #include "SDL_opengl.h"
-#endif
 
 #ifndef APIENTRY
 #define APIENTRY
@@ -95,14 +88,12 @@ typedef GLvoid* (APIENTRYP PFNGLMAPBUFFERARBPROC) (GLenum target, GLenum access)
 typedef GLboolean (APIENTRYP PFNGLUNMAPBUFFERARBPROC) (GLenum target);
 #endif
 
-#ifndef __ANDROID__
 PFNGLGENBUFFERSARBPROC glGenBuffersARB = NULL;
 PFNGLBINDBUFFERARBPROC glBindBufferARB = NULL;
 PFNGLDELETEBUFFERSARBPROC glDeleteBuffersARB = NULL;
 PFNGLBUFFERDATAARBPROC glBufferDataARB = NULL;
 PFNGLMAPBUFFERARBPROC glMapBufferARB = NULL;
 PFNGLUNMAPBUFFERARBPROC glUnmapBufferARB = NULL;
-#endif
 
 #endif //C_OPENGL
 
@@ -215,12 +206,7 @@ struct SDL_Block {
 		void * framebuf;
 		GLuint buffer;
 		GLuint texture;
-#ifdef __ANDROID__ // OpenGL ES
-		GLfloat vertCoords[8];
-		GLfloat texCoords[8];
-#else // OpenGL (not ES)
 		GLuint displaylist;
-#endif
 		GLint max_texsize;
 		bool bilinear;
 		bool packed_pixel;
@@ -261,13 +247,6 @@ struct SDL_Block {
 		bool requestlock;
 		bool locked;
 		Bitu sensitivity;
-#ifdef __ANDROID__
-		SDL_FingerID leftMouseFingerID, rightMouseFingerID,
-		             middleMouseFingerID, mouseMotionFingerID,
-		             escKeyFingerID;
-		bool isLeftMouseFingerUsed, isRightMouseFingerUsed,
-		     isMiddleMouseFingerUsed, isEscKeyFingerUsed;
-#endif
 	} mouse;
 	SDL_Rect updateRects[1024];
 	Bitu num_joysticks;
@@ -564,11 +543,7 @@ check_gotbpp:
 #endif	// !SDL_VERSION_ATLEAST(2,0,0)
 #if C_OPENGL
 	case SCREEN_OPENGL:
-#ifdef __ANDROID__
-		if (!(flags&GFX_CAN_32)) goto check_surface; // RGBA is used on Android (OpenGL ES v1.1)
-#else
 		if (flags & GFX_RGBONLY || !(flags&GFX_CAN_32)) goto check_surface; // BGRA otherwise
-#endif
 		flags|=GFX_SCALING;
 		flags&=~(GFX_CAN_8|GFX_CAN_15|GFX_CAN_16);
 		break;
@@ -672,7 +647,6 @@ static SDL_Window * GFX_SetSDLWindowMode(Bit16u width, Bit16u height, bool fulls
 	 * although it has its own issues.
 	 * Suggestion: Use the desktop res if possible, with output=surface
 	 * if one is not interested in scaling.
-	 * On Android, desktop res is the only way.
 	 */
 	if (fullscreen) {
 		SDL_DisplayMode displayMode;
@@ -693,48 +667,25 @@ static SDL_Window * GFX_SetSDLWindowMode(Bit16u width, Bit16u height, bool fulls
 	return sdl.window;
 }
 
-// Used for the mapper UI and more: Creates a fullscreen window with desktop res
-// on Android, and a non-fullscreen window with the input dimensions otherwise.
+// Used for the mapper UI and more: Creates a non-fullscreen window with the
+// input dimensions otherwise.
 SDL_Window * GFX_SetSDLSurfaceWindow(Bit16u width, Bit16u height) {
-#ifdef __ANDROID__
-	return GFX_SetSDLWindowMode(sdl.desktop.full.width, sdl.desktop.full.height, true, SCREEN_SURFACE);
-#else
 	return GFX_SetSDLWindowMode(width, height, false, SCREEN_SURFACE);
-#endif
 }
 
 // Returns the rectangle in the current window to be used for scaling a
 // sub-window with the given dimensions, like the mapper UI.
 SDL_Rect GFX_GetSDLSurfaceSubwindowDims(Bit16u width, Bit16u height) {
 	SDL_Rect rect;
-#ifdef __ANDROID__
-	// Wider than width:height
-	if (height*sdl.desktop.full.width > sdl.desktop.full.height*width) {
-		rect.w=sdl.desktop.full.height*width/height;
-		rect.h=sdl.desktop.full.height;
-		rect.x=(sdl.desktop.full.width-rect.w)/2;
-		rect.y=0;
-	} else { // NOT wider than width:height
-		rect.w=sdl.desktop.full.width;
-		rect.h=sdl.desktop.full.width*height/width;
-		rect.x=0;
-		rect.y=(sdl.desktop.full.height-rect.h)/2;
-	}
-#else
 	rect.x=rect.y=0;
 	rect.w=width;
 	rect.h=height;
-#endif
 	return rect;
 }
 
 // Currently used for an initial test here
 static SDL_Window * GFX_SetSDLOpenGLWindow(Bit16u width, Bit16u height) {
-#ifdef __ANDROID__
-	return GFX_SetSDLWindowMode(sdl.desktop.full.width, sdl.desktop.full.height, true, SCREEN_OPENGL);
-#else
 	return GFX_SetSDLWindowMode(width, height, false, SCREEN_OPENGL);
-#endif
 }
 
 #endif // SDL_VERSION_ATLEAST(2,0,0)
@@ -799,13 +750,7 @@ static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp)
 		if (sdl.surface && sdl.surface->flags & SDL_FULLSCREEN) {
 			sdl.clip.x=(Sint16)((sdl.surface->w-sdl.clip.w)/2);
 #endif
-#ifdef __ANDROID__
-			/* Portrait orientation and on-screen keyboards
-			are commonly found on that platform          */
-			sdl.clip.y=0;
-#else
 			sdl.clip.y=(Sint16)((fixedHeight-sdl.clip.h)/2);
-#endif
 		} else {
 			sdl.clip.x = 0;
 			sdl.clip.y = 0;
@@ -875,13 +820,7 @@ dosurface:
 		if (sdl.desktop.fullscreen) {
 			if (sdl.desktop.full.fixed) {
 				sdl.clip.x=(Sint16)((sdl.desktop.full.width-width)/2);
-#ifdef __ANDROID__
-				/* Portrait orientation and on-screen keyboards
-				are commonly found on that platform          */
-				sdl.clip.y=0;
-#else
 				sdl.clip.y=(Sint16)((sdl.desktop.full.height-height)/2);
-#endif
 #if SDL_VERSION_ATLEAST(2,0,0)
 				sdl.window = GFX_SetSDLWindowMode(sdl.desktop.full.width,
 				                                  sdl.desktop.full.height,
@@ -1104,35 +1043,21 @@ dosurface:
 #if C_OPENGL
 	case SCREEN_OPENGL:
 	{
-#ifndef __ANDROID__
 		if (sdl.opengl.pixel_buffer_object) {
 			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_EXT, 0);
 			if (sdl.opengl.buffer) glDeleteBuffersARB(1, &sdl.opengl.buffer);
 		} else
-#endif
 		if (sdl.opengl.framebuf) {
 			free(sdl.opengl.framebuf);
 		}
 		sdl.opengl.framebuf=0;
-#ifdef __ANDROID__
-		if (!(flags&GFX_CAN_32)) goto dosurface; // RGBA is used on Android (OpenGL ES v1.1)
-#else
 		if (!(flags&GFX_CAN_32) || (flags & GFX_RGBONLY)) goto dosurface; // BGRA otherwise
-#endif
 		int texsize=2 << int_log2(width > height ? width : height);
 		if (texsize>sdl.opengl.max_texsize) {
 			LOG_MSG("SDL:OPENGL:No support for texturesize of %d, falling back to surface",texsize);
 			goto dosurface;
 		}
 		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-#ifdef __ANDROID__
-		/* WARNING: OpenGL ES v2.0 is NOT backwards compatible
-		 * with v1.1! For simplicity we force v1.1 for now,
-		 * although v2.0 is probably the better way.
-		 */
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-#endif
 #if SDL_VERSION_ATLEAST(2,0,0)
 		GFX_SetupWindowScaled(sdl.desktop.want_type);
 		/* We may simply use SDL_BYTESPERPIXEL
@@ -1159,15 +1084,12 @@ dosurface:
 		}
 #endif	// !SDL_VERSION_ATLEAST(2,0,0)
 		/* Create the texture and display list */
-#ifndef __ANDROID__
 		if (sdl.opengl.pixel_buffer_object) {
 			glGenBuffersARB(1, &sdl.opengl.buffer);
 			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_EXT, sdl.opengl.buffer);
 			glBufferDataARB(GL_PIXEL_UNPACK_BUFFER_EXT, width*height*4, NULL, GL_STREAM_DRAW_ARB);
 			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_EXT, 0);
-		} else
-#endif
-		{
+		} else {
 			sdl.opengl.framebuf=malloc(width*height*4);		//32 bit color
 		}
 		sdl.opengl.pitch=width*4;
@@ -1183,15 +1105,8 @@ dosurface:
  		glGenTextures(1,&sdl.opengl.texture);
 		glBindTexture(GL_TEXTURE_2D,sdl.opengl.texture);
 		// No borders
-#ifdef __ANDROID__
-		/* Plain OpenGL ES (v1.1) has no mention
-		of GL_CLAMP, so use GL_CLAMP_TO_EDGE  */
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-#else
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-#endif
 		if (sdl.opengl.bilinear) {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1200,13 +1115,9 @@ dosurface:
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		}
 
-#ifdef __ANDROID__	// OpenGL ES
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texsize, texsize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#else
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texsize, texsize, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, 0);
-#endif
 
-		glClearColor (0.0, 0.0, 0.0, 1.0);
+    glClearColor (0.0, 0.0, 0.0, 1.0);
 		glShadeModel (GL_FLAT);
 		glDisable (GL_DEPTH_TEST);
 		glDisable (GL_LIGHTING);
@@ -1218,14 +1129,6 @@ dosurface:
 		GLfloat tex_width=((GLfloat)(width)/(GLfloat)texsize);
 		GLfloat tex_height=((GLfloat)(height)/(GLfloat)texsize);
 
-#ifdef __ANDROID__
-		/* Display lists are not available with OpenGL ES (1.0, 2.0).
-		Furthermore, we can't use glBegin, glTexCoord2f and glEnd. */
-		sdl.opengl.texCoords[0] = 0; sdl.opengl.texCoords[1] = tex_height; // lower left
-		sdl.opengl.texCoords[2] = tex_width; sdl.opengl.texCoords[3] = tex_height; // lower right
-		sdl.opengl.texCoords[4] = tex_width; sdl.opengl.texCoords[5] = 0; // upper right
-		sdl.opengl.texCoords[6] = 0; sdl.opengl.texCoords[7] = 0; // upper left
-#else
 		if (glIsList(sdl.opengl.displaylist)) glDeleteLists(sdl.opengl.displaylist, 1);
 		sdl.opengl.displaylist = glGenLists(1);
 		glNewList(sdl.opengl.displaylist, GL_COMPILE);
@@ -1242,13 +1145,10 @@ dosurface:
 		glTexCoord2f(0,0); glVertex2f(-1.0f, 1.0f);
 		glEnd();
 		glEndList();
-#endif
 		sdl.desktop.type=SCREEN_OPENGL;
 		retFlags = GFX_CAN_32 | GFX_SCALING;
-#ifndef __ANDROID__
 		if (sdl.opengl.pixel_buffer_object)
 			retFlags |= GFX_HARDWARE;
-#endif
 	break;
 		}//OPENGL
 #endif	//C_OPENGL
@@ -1442,13 +1342,10 @@ bool GFX_StartUpdate(Bit8u * & pixels,Bitu & pitch) {
 #endif	// !SDL_VERSION_ATLEAST(2,0,0)
 #if C_OPENGL
 	case SCREEN_OPENGL:
-#ifndef __ANDROID__
 		if(sdl.opengl.pixel_buffer_object) {
 		    glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_EXT, sdl.opengl.buffer);
 		    pixels=(Bit8u *)glMapBufferARB(GL_PIXEL_UNPACK_BUFFER_EXT, GL_WRITE_ONLY);
-		} else
-#endif
-		{
+		} else {
 		    pixels=(Bit8u *)sdl.opengl.framebuf;
 		}
 		pitch=sdl.opengl.pitch;
@@ -1560,7 +1457,6 @@ void GFX_EndUpdate( const Bit16u *changedLines ) {
 #endif	// !SDL_VERSION_ATLEAST(2,0,0)
 #if C_OPENGL
 	case SCREEN_OPENGL:
-#ifndef __ANDROID__
 		if (sdl.opengl.pixel_buffer_object) {
 			glUnmapBufferARB(GL_PIXEL_UNPACK_BUFFER_EXT);
 			glBindTexture(GL_TEXTURE_2D, sdl.opengl.texture);
@@ -1574,9 +1470,7 @@ void GFX_EndUpdate( const Bit16u *changedLines ) {
 #else
  			SDL_GL_SwapBuffers();
 #endif
-		} else
-#endif	// ifndef __ANDROID__
-		if (changedLines) {
+		} else if (changedLines) {
 			Bitu y = 0, index = 0;
 			glBindTexture(GL_TEXTURE_2D, sdl.opengl.texture);
 			while (y < sdl.draw.height) {
@@ -1585,38 +1479,14 @@ void GFX_EndUpdate( const Bit16u *changedLines ) {
 				} else {
 					Bit8u *pixels = (Bit8u *)sdl.opengl.framebuf + y * sdl.opengl.pitch;
 					Bitu height = changedLines[index];
-#ifdef __ANDROID__
-					/* Try GL_UNSIGNED_BYTE... */
-					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y,
-						sdl.draw.width, height, GL_RGBA,
-						GL_UNSIGNED_BYTE, pixels );
-#else
 					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y,
 						sdl.draw.width, height, GL_BGRA_EXT,
 						GL_UNSIGNED_INT_8_8_8_8_REV, pixels );
-#endif
 					y += height;
 				}
 				index++;
 			}
-#ifdef __ANDROID__
-			/* We can't use display lists with OpenGL ES
-			and we should use Vertex Buffer Arrays    */
-			glClear(GL_COLOR_BUFFER_BIT);
-			glBindTexture(GL_TEXTURE_2D, sdl.opengl.texture);
-
-			glEnableClientState(GL_VERTEX_ARRAY);
-			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-			glVertexPointer(2, GL_FLOAT, 0, sdl.opengl.vertCoords);
-			glTexCoordPointer(2, GL_FLOAT, 0, sdl.opengl.texCoords);
-			glDrawArrays(GL_TRIANGLE_FAN,0,4);
-
-			glDisableClientState(GL_VERTEX_ARRAY);
-			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-#else	// !__ANDROID__
 			glCallList(sdl.opengl.displaylist);
-#endif	// !__ANDROID__
 #if SDL_VERSION_ATLEAST(2,0,0)
 			SDL_GL_SwapWindow(sdl.window);
 #else
@@ -1671,13 +1541,8 @@ Bitu GFX_GetRGB(Bit8u red,Bit8u green,Bit8u blue) {
 		}
 #endif	// !SDL_VERSION_ATLEAST(2,0,0)
 	case SCREEN_OPENGL:
-#ifdef __ANDROID__
-		//Use RGBA on Android with OpenGL ES v1.1
-		return ((red << 0) | (green << 8) | (blue << 16)) | (255 << 24);
-#else
 		//USE BGRA otherwise
 		return ((blue << 0) | (green << 8) | (red << 16)) | (255 << 24);
-#endif
 	}
 	return 0;
 }
@@ -1713,9 +1578,6 @@ void GFX_ObtainDisplayDimensions() {
  */
 void GFX_UpdateDisplayDimensions(int width, int height) {
 	if (sdl.desktop.full.display_res && sdl.desktop.fullscreen) {
-		/* Note: We should not use GFX_ObtainDisplayDimensions
-		(SDL_GetDisplayBounds) on Android after a screen rotation:
-		The older values from application startup are returned. */
 		sdl.desktop.full.width = width;
 		sdl.desktop.full.height = height;
 	}
@@ -1822,11 +1684,7 @@ static void GUI_StartUp(Section * sec) {
 	sdl.desktop.lazy_fullscreen=false;
 	sdl.desktop.lazy_fullscreen_req=false;
 
-#ifdef __ANDROID__
-	sdl.desktop.fullscreen=true;
-#else
 	sdl.desktop.fullscreen=section->Get_bool("fullscreen");
-#endif
 	sdl.wait_on_error=section->Get_bool("waitonerror");
 
 	Prop_multival* p=section->Get_multival("priority");
@@ -1855,18 +1713,10 @@ static void GUI_StartUp(Section * sec) {
 	sdl.mouse.locked=false;
 	mouselocked=false; //Global for mapper
 	sdl.mouse.requestlock=false;
-#ifdef __ANDROID__
-	sdl.mouse.isLeftMouseFingerUsed=sdl.mouse.isRightMouseFingerUsed=false;
-	sdl.mouse.isMiddleMouseFingerUsed=sdl.mouse.isEscKeyFingerUsed=false;
-	/* We force fullscreen desktop resolution */
-	sdl.desktop.full.fixed=true;
-#else
 	sdl.desktop.full.fixed=false;
 	const char* fullresolution=section->Get_string("fullresolution");
-#endif
 	sdl.desktop.full.width  = 0;
 	sdl.desktop.full.height = 0;
-#ifndef __ANDROID__
 	if(fullresolution && *fullresolution) {
 		char res[100];
 		safe_strncpy( res, fullresolution, sizeof( res ));
@@ -1883,10 +1733,8 @@ static void GUI_StartUp(Section * sec) {
 			}
 		}
 	}
-#endif
 	sdl.desktop.window.width  = 0;
 	sdl.desktop.window.height = 0;
-#ifndef __ANDROID__
 	const char* windowresolution=section->Get_string("windowresolution");
 	if(windowresolution && *windowresolution) {
 		char res[100];
@@ -1901,7 +1749,6 @@ static void GUI_StartUp(Section * sec) {
 			}
 		}
 	}
-#endif
 
 	sdl.desktop.vsync=section->Get_bool("vsync");
 
@@ -1997,16 +1844,6 @@ static void GUI_StartUp(Section * sec) {
 	sdl.overlay=0;
 #endif
 
-#if (defined C_OPENGL) && (defined __ANDROID__) // OpenGL ES
-	static const GLfloat vertCoords[] = {
-	-1, -1, //  lower left
-	1, -1, // lower right
-	1, 1, // upper right
-	-1, 1 // upper left
-	};
-	memcpy(sdl.opengl.vertCoords, vertCoords, sizeof(vertCoords));
-#endif
-
 #if C_OPENGL
    if(sdl.desktop.want_type==SCREEN_OPENGL){ /* OPENGL is requested */
 #if SDL_VERSION_ATLEAST(2,0,0)
@@ -2031,12 +1868,9 @@ static void GUI_StartUp(Section * sec) {
 	sdl.opengl.buffer=0;
 	sdl.opengl.framebuf=0;
 	sdl.opengl.texture=0;
-#ifndef __ANDROID__
 	sdl.opengl.displaylist=0;
-#endif
 
 	glGetIntegerv (GL_MAX_TEXTURE_SIZE, &sdl.opengl.max_texsize);
-#ifndef __ANDROID__
 	glGenBuffersARB = (PFNGLGENBUFFERSARBPROC)SDL_GL_GetProcAddress("glGenBuffersARB");
 	glBindBufferARB = (PFNGLBINDBUFFERARBPROC)SDL_GL_GetProcAddress("glBindBufferARB");
 	glDeleteBuffersARB = (PFNGLDELETEBUFFERSARBPROC)SDL_GL_GetProcAddress("glDeleteBuffersARB");
@@ -2053,7 +1887,6 @@ static void GUI_StartUp(Section * sec) {
     	} else {
 		sdl.opengl.packed_pixel=sdl.opengl.paletted_texture=false;
 	}
-#endif	// ifndef __ANDROID__
 	}
 	} /* OPENGL is requested end */
 
@@ -2217,83 +2050,6 @@ void Mouse_AutoLock(bool enable) {
 	}
 }
 
-#if defined(__ANDROID__)
-/* The way mouse emulation is done here is based on the
-following (horizontal) partitioning of the touchscreen:
-
-/-----------------------------------------------------------------------\
-|    Left   | (H)Escape |   Motion  |  Motion   |   Middle  |   Right   |
-\-----------------------------------------------------------------------/
-
-Note that the simulated Escape key is the host one
-(not the emulator's), so it can be re-mapped.
-Furthermore, that should be considered a hack for now. */
-static void HandleTouchFinger(SDL_TouchFingerEvent * tfinger) {
-	void MAPPER_CheckEvent(SDL_Event * event);
-	switch (tfinger->type) {
-		case SDL_FINGERDOWN:
-			if (tfinger->x >= 0.83f) { // Right button
-				sdl.mouse.rightMouseFingerID = tfinger->fingerId;
-				if (!sdl.mouse.isRightMouseFingerUsed) {
-					Mouse_ButtonPressed(1);
-					sdl.mouse.isRightMouseFingerUsed = true;
-				}
-			} else if (tfinger->x >= 0.67f) { // Middle button
-				sdl.mouse.middleMouseFingerID = tfinger->fingerId;
-				if (!sdl.mouse.isMiddleMouseFingerUsed) {
-					Mouse_ButtonPressed(2);
-					sdl.mouse.isMiddleMouseFingerUsed = true;
-				}
-			} else if (tfinger->x >= 0.33f) { // Motion
-				sdl.mouse.mouseMotionFingerID = tfinger->fingerId;
-			} else if (tfinger->x >= 0.17f) { // (Host) Escape key
-				sdl.mouse.escKeyFingerID = tfinger->fingerId;
-				if (!sdl.mouse.isEscKeyFingerUsed) {
-					SDL_Event event;
-					event.type = SDL_KEYDOWN;
-					event.key.keysym.scancode = SDL_SCANCODE_ESCAPE;
-					MAPPER_CheckEvent(&event);
-					sdl.mouse.isEscKeyFingerUsed = true;
-				}
-			} else { // Left button
-				sdl.mouse.leftMouseFingerID = tfinger->fingerId;
-				if (!sdl.mouse.isLeftMouseFingerUsed) {
-					Mouse_ButtonPressed(0);
-					sdl.mouse.isLeftMouseFingerUsed = true;
-				}
-			}
-			break;
-		case SDL_FINGERUP:
-			if ((sdl.mouse.leftMouseFingerID == tfinger->fingerId) && sdl.mouse.isLeftMouseFingerUsed) {
-				Mouse_ButtonReleased(0);
-				sdl.mouse.isLeftMouseFingerUsed = false;
-			} else if ((sdl.mouse.rightMouseFingerID == tfinger->fingerId) && sdl.mouse.isRightMouseFingerUsed) {
-				Mouse_ButtonReleased(1);
-				sdl.mouse.isRightMouseFingerUsed = false;
-			} else if ((sdl.mouse.middleMouseFingerID == tfinger->fingerId) && sdl.mouse.isMiddleMouseFingerUsed) {
-				Mouse_ButtonReleased(2);
-				sdl.mouse.isMiddleMouseFingerUsed = false;
-			} else if ((sdl.mouse.escKeyFingerID == tfinger->fingerId) && sdl.mouse.isEscKeyFingerUsed) {
-				SDL_Event event;
-				event.type = SDL_KEYUP;
-				event.key.keysym.scancode = SDL_SCANCODE_ESCAPE;
-				MAPPER_CheckEvent(&event);
-				sdl.mouse.isEscKeyFingerUsed = false;
-			}
-			break;
-		case SDL_FINGERMOTION:
-			/* We basically IGNORE the absolute coordinates, since
-			we emulate relative mouse movement all the time.    */
-			if (sdl.mouse.mouseMotionFingerID == tfinger->fingerId) {
-				Mouse_CursorMoved((float)tfinger->dx*sdl.clip.w*sdl.mouse.sensitivity/100.0f,
-				                  (float)tfinger->dy*sdl.clip.h*sdl.mouse.sensitivity/100.0f,
-				                  0, 0, true);
-			}
-			break;
-	}
-}
-
-#else	// Not on Android
 static void HandleMouseMotion(SDL_MouseMotionEvent * motion) {
 	if (sdl.mouse.locked || !sdl.mouse.autoenable)
 		Mouse_CursorMoved((float)motion->xrel*sdl.mouse.sensitivity/100.0f,
@@ -2342,7 +2098,6 @@ static void HandleMouseButton(SDL_MouseButtonEvent * button) {
 		break;
 	}
 }
-#endif	// End of touch/mouse differentiation
 
 void GFX_LosingFocus(void) {
 	sdl.laltstate=SDL_KEYUP;
@@ -2561,13 +2316,6 @@ void GFX_Events() {
 			}
 			break;
 #endif	// !SDL_VERSION_ATLEAST(2,0,0)
-#if defined(__ANDROID__)
-		case SDL_FINGERDOWN:
-		case SDL_FINGERUP:
-		case SDL_FINGERMOTION:
-			HandleTouchFinger(&event.tfinger);
-			break;
-#else
 		case SDL_MOUSEMOTION:
 			HandleMouseMotion(&event.motion);
 			break;
@@ -2575,7 +2323,6 @@ void GFX_Events() {
 		case SDL_MOUSEBUTTONUP:
 			HandleMouseButton(&event.button);
 			break;
-#endif
 #if !SDL_VERSION_ATLEAST(2,0,0)
 		case SDL_VIDEORESIZE:
 			//GFX_HandleVideoResize(event.resize.w, event.resize.h);
@@ -2653,11 +2400,7 @@ void GFX_ShowMsg(char const* format,...) {
 	vsprintf(buf,format,msg);
         strcat(buf,"\n");
 	va_end(msg);
-#ifdef __ANDROID__
-	__android_log_print(ANDROID_LOG_DEBUG, "DOSBox", buf);
-#else
 	if(!no_stdout) printf("%s",buf); //Else buf is parsed again.
-#endif
 }
 
 
@@ -2669,16 +2412,13 @@ void Config_Add_SDL() {
 	Prop_int* Pint;
 	Prop_multival* Pmulti;
 
-#ifndef __ANDROID__
 	Pbool = sdl_sec->Add_bool("fullscreen",Property::Changeable::Always,false);
 	Pbool->Set_help("Start dosbox directly in fullscreen. (Press ALT-Enter to go back)");
-#endif
      
 	Pbool = sdl_sec->Add_bool("vsync",Property::Changeable::Always,false);
 	Pbool->Set_help("Sync to Vblank IF supported by the output device and renderer (if relevant).\n"
 	                "It can reduce screen flickering, but it can also result in a slow DOSBox.");
 
-#ifndef __ANDROID__
 	Pstring = sdl_sec->Add_string("fullresolution",Property::Changeable::Always,"0x0");
 	Pstring->Set_help("What resolution to use for fullscreen: original, desktop or a fixed size (e.g. 1024x768).\n"
 	                  "  Using your monitor's native resolution with aspect=true might give the best results.\n"
@@ -2687,8 +2427,6 @@ void Config_Add_SDL() {
 	Pstring = sdl_sec->Add_string("windowresolution",Property::Changeable::Always,"original");
 	Pstring->Set_help("Scale the window to this size IF the output device supports hardware scaling.\n"
 	                  "  (output=surface does not!)");
-#endif
-
 	const char* outputs[] = {
 		"surface",
 #if SDL_VERSION_ATLEAST(2, 0, 0)
@@ -2718,12 +2456,7 @@ void Config_Add_SDL() {
 #ifdef WIN32
 		"direct3d",
 #endif
-#ifdef __ANDROID__
-		"opengles2",
-		"opengles",
-#else	// On any platform other than Android
 		"opengl",
-#endif
 		"software",
 		0 };
 	Pstring = sdl_sec->Add_string("renderer",Property::Changeable::Always,"auto");
@@ -3040,11 +2773,6 @@ int main(int argc, char* argv[]) {
 	sdl.inited = true;
 
 #ifndef DISABLE_JOYSTICK
-#ifdef __ANDROID__
-	// Disable accelerometer-as-joystick emulation
-	// (available for backwards compatibility)
-	SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
-#endif
 	//Initialise Joystick separately. This way we can warn when it fails instead
 	//of exiting the application
 	if( SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0 ) LOG_MSG("Failed to init joystick support");
@@ -3202,9 +2930,6 @@ int main(int argc, char* argv[]) {
 	SDL_ShowCursor(SDL_ENABLE);
 
 	SDL_Quit_Wrapper();//Let's hope sdl will quit as well when it catches an exception
-#ifdef __ANDROID__
-	exit(0); // Actually quits application... and hopefully(?) removes static values
-#endif
 	return 0;
 }
 
