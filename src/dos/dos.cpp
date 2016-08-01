@@ -16,6 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+#include <iostream>
 
 #include <stdlib.h>
 #include <string.h>
@@ -105,7 +106,7 @@ static inline void overhead() {
 
 #define DOSNAMEBUF 256
 static Bitu DOS_21Handler(void) {
-	if (((reg_ah != 0x50) && (reg_ah != 0x51) && (reg_ah != 0x62) && (reg_ah != 0x64)) && (reg_ah<0x6c)) {
+  if (((reg_ah != 0x50) && (reg_ah != 0x51) && (reg_ah != 0x62) && (reg_ah != 0x64)) && (reg_ah<0x6c)) {
 		DOS_PSP psp(dos.psp());
 		psp.SetStack(RealMake(SegValue(ss),reg_sp-18));
 	}
@@ -956,8 +957,11 @@ static Bitu DOS_21Handler(void) {
 			break;
 		}
 	case 0x5c:			/* FLOCK File region locking */
-		DOS_SetError(DOSERR_FUNCTION_NUMBER_INVALID);
-		reg_ax = dos.errorcode;
+		//DOS_SetError(DOSERR_FUNCTION_NUMBER_INVALID);
+		//reg_ax = dos.errorcode;
+    // HACK - make the app think we locked it.
+    // but we're faking out sharing.
+    reg_ax = 0x00;
 		CALLBACK_SCF(true);
 		break;
 	case 0x5d:					/* Network Functions */
