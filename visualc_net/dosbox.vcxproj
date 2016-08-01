@@ -45,14 +45,14 @@
     <OutDir>.\Debug\</OutDir>
     <IntDir>.\Debug\</IntDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\SDL-1.2.15\include;$(ProjectDir)..\..\SDL_net-1.2.8\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\deps\SDL-1.2.15\include;$(ProjectDir)..\deps\SDL_net-1.2.8\;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)..\..\SDL-1.2.15\lib\x86;$(ProjectDir)..\..\SDL_net-1.2.8\lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>.\Release\</OutDir>
     <IntDir>.\Release\</IntDir>
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(ProjectDir)..\..\SDL-1.2.15\include;$(ProjectDir)..\..\SDL_net-1.2.8\;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)..\deps\SDL-1.2.15\include;$(ProjectDir)..\deps\SDL_net-1.2.8\;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)..\..\SDL-1.2.15\lib\x86;$(ProjectDir)..\..\SDL_net-1.2.8\lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
