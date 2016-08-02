@@ -4,7 +4,7 @@
 # Building on Windows
 
 You can use Visual Studio 2015 and open the Solution named:
-```./visualc_net/dosbox.sln```
+``` ./visualc_net/dosbox.sln ```
 
 
 # Building on Linux
