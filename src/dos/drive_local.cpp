@@ -23,6 +23,10 @@
 #include <time.h>
 #include <errno.h>
 
+#ifdef _WIN32
+#include <sys/locking.h>
+#endif  // _WIN32
+
 #include "dosbox.h"
 #include "dos_inc.h"
 #include "drives.h"
@@ -36,7 +40,7 @@ public:
 	bool Read(Bit8u * data,Bit16u * size);
 	bool Write(Bit8u * data,Bit16u * size);
 	bool Seek(Bit32u * pos,Bit32u type);
-  bool LockFile(Bit8u mode, Bit32u pos, Bit16u size);
+  bool LockFile(Bit8u mode, Bit32u pos, Bit32u size);
   bool Close();
 	Bit16u GetInformation(void);
 	bool UpdateDateTimeFromHost(void);   
@@ -486,14 +490,13 @@ bool localFile::Write(Bit8u * data,Bit16u * size) {
 
 /* ert, 20100711: Locking extensions */
 #ifdef WIN32
-#include <sys/locking.h>
-bool localFile::LockFile(Bit8u mode, Bit32u pos, Bit16u size) {
+bool localFile::LockFile(Bit8u mode, Bit32u pos, Bit32u size) {
   HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(fhandle));
-  BOOL bRet;
+  bool bRet = false;
 
   switch (mode) {
-  case 0: bRet = ::LockFile(hFile, pos, 0, size, 0); break;
-  case 1: bRet = ::UnlockFile(hFile, pos, 0, size, 0); break;
+  case 0: bRet = ::LockFile(hFile, pos, 0, size, 0) != FALSE; break;
+  case 1: bRet = ::UnlockFile(hFile, pos, 0, size, 0) != FALSE; break;
   default:
     DOS_SetError(DOSERR_FUNCTION_NUMBER_INVALID);
     return false;
@@ -522,6 +525,10 @@ bool localFile::LockFile(Bit8u mode, Bit32u pos, Bit16u size) {
   }
   return bRet;
 }
+
+#else // UNIX
+
+// TODO(rushfan): Implement *NIX style locking here.
 #endif
 
 bool localFile::Seek(Bit32u * pos,Bit32u type) {
