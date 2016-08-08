@@ -36,7 +36,8 @@ public:
 	bool Read(Bit8u * data,Bit16u * size);
 	bool Write(Bit8u * data,Bit16u * size);
 	bool Seek(Bit32u * pos,Bit32u type);
-	bool Close();
+  bool LockFile(Bit8u mode, Bit32u pos, Bit16u size);
+  bool Close();
 	Bit16u GetInformation(void);
 	bool UpdateDateTimeFromHost(void);   
 	void FlagReadOnlyMedium(void);
@@ -482,6 +483,46 @@ bool localFile::Write(Bit8u * data,Bit16u * size) {
 		return true;
     }
 }
+
+/* ert, 20100711: Locking extensions */
+#ifdef WIN32
+#include <sys/locking.h>
+bool localFile::LockFile(Bit8u mode, Bit32u pos, Bit16u size) {
+  HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(fhandle));
+  BOOL bRet;
+
+  switch (mode) {
+  case 0: bRet = ::LockFile(hFile, pos, 0, size, 0); break;
+  case 1: bRet = ::UnlockFile(hFile, pos, 0, size, 0); break;
+  default:
+    DOS_SetError(DOSERR_FUNCTION_NUMBER_INVALID);
+    return false;
+  }
+  //LOG_MSG("::LockFile %s", name);
+
+  if (!bRet) {
+    switch (GetLastError()) {
+    case ERROR_ACCESS_DENIED:
+    case ERROR_LOCK_VIOLATION:
+    case ERROR_NETWORK_ACCESS_DENIED:
+    case ERROR_DRIVE_LOCKED:
+    case ERROR_SEEK_ON_DEVICE:
+    case ERROR_NOT_LOCKED:
+    case ERROR_LOCK_FAILED:
+      DOS_SetError(0x21);
+      break;
+    case ERROR_INVALID_HANDLE:
+      DOS_SetError(DOSERR_INVALID_HANDLE);
+      break;
+    case ERROR_INVALID_FUNCTION:
+    default:
+      DOS_SetError(DOSERR_FUNCTION_NUMBER_INVALID);
+      break;
+    }
+  }
+  return bRet;
+}
+#endif
 
 bool localFile::Seek(Bit32u * pos,Bit32u type) {
 	int seektype;

@@ -113,6 +113,8 @@ void DOS_SetupFiles (void);
 bool DOS_ReadFile(Bit16u handle,Bit8u * data,Bit16u * amount, bool fcb = false);
 bool DOS_WriteFile(Bit16u handle,Bit8u * data,Bit16u * amount,bool fcb = false);
 bool DOS_SeekFile(Bit16u handle,Bit32u * pos,Bit32u type,bool fcb = false);
+/* ert, 20100711: Locking extensions */
+bool DOS_LockFile(Bit16u entry, Bit8u mode, Bit32u pos, Bit32u size);
 bool DOS_CloseFile(Bit16u handle,bool fcb = false);
 bool DOS_FlushFile(Bit16u handle);
 bool DOS_DuplicateEntry(Bit16u entry,Bit16u * newentry);

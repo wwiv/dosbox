@@ -81,7 +81,7 @@ static bool DOS_FakeShare() {
 
 static bool DOS_MultiplexFunctions(void) {
   switch (reg_ax) {
-	case 0x1216:	/* GET ADDRESS OF SYSTEM FILE TABLE ENTRY */
+  case 0x1216:	/* GET ADDRESS OF SYSTEM FILE TABLE ENTRY */
 		// reg_bx is a system file table entry, should coincide with
 		// the file handle so just use that
 		LOG(LOG_DOSMISC,LOG_ERROR)("Some BAD filetable call used bx=%X",reg_bx);

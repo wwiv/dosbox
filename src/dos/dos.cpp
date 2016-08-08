@@ -957,13 +957,19 @@ static Bitu DOS_21Handler(void) {
 			break;
 		}
 	case 0x5c:			/* FLOCK File region locking */
-		//DOS_SetError(DOSERR_FUNCTION_NUMBER_INVALID);
-		//reg_ax = dos.errorcode;
-    // HACK - make the app think we locked it.
-    // but we're faking out sharing.
-    reg_ax = 0x00;
-		CALLBACK_SCF(true);
-		break;
+  {
+    /* ert, 20100711: Locking extensions */
+    Bit32u pos = (reg_cx << 16) + reg_dx;
+    Bit32u size = (reg_si << 16) + reg_di;
+    //LOG_MSG("LockFile: BX=%d, AL=%d, POS=%d, size=%d", reg_bx, reg_al, pos, size);
+    if (DOS_LockFile(reg_bx, reg_al, pos, size)) {
+      reg_ax = 0;
+      CALLBACK_SCF(false);
+    } else {
+      reg_ax = dos.errorcode;
+      CALLBACK_SCF(true);
+    }
+  } break;
 	case 0x5d:					/* Network Functions */
 		if(reg_al == 0x06) {
 			SegSet16(ds,DOS_SDA_SEG);
