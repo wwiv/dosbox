@@ -1513,14 +1513,16 @@ SDL_Surface *DX5_SetVideoMode(_THIS, SDL_Surface *current,
 			}
 		}
 		dd_surface3 = NULL;
-#if 0 /* FIXME: enable this when SDL consistently reports lost surfaces */
+    // NOTE: Changed from 0 to 1 following the advice on 
+    // http://www.vogons.org/viewtopic.php?t=55706
+#if 1 /* FIXME: enable this when SDL consistently reports lost surfaces */ 
 		if ( (flags & SDL_HWSURFACE) == SDL_HWSURFACE ) {
 			video->flags |= SDL_HWSURFACE;
 		} else {
 			video->flags |= SDL_SWSURFACE;
 		}
 #else
-		video->flags |= SDL_SWSURFACE;
+    video->flags |= SDL_SWSURFACE;
 #endif
 		if ( (flags & SDL_RESIZABLE) && !(flags & SDL_NOFRAME) ) {
 			video->flags |= SDL_RESIZABLE;
