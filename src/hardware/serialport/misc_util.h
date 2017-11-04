@@ -38,7 +38,6 @@
  #define NATIVESOCKETS
  #include <winsock2.h>
  #include <ws2tcpip.h> //for socklen_t
- //typedef int  socklen_t;
 
 //Tests for BSD/OS2/LINUX
 #elif defined HAVE_STDLIB_H && defined HAVE_SYS_TYPES_H && defined HAVE_SYS_SOCKET_H && defined HAVE_NETINET_IN_H
@@ -94,11 +93,11 @@ class TCPClientSocket {
 	
 	// buffered send functions
 	bool SendByteBuffered(Bit8u data);
-	bool SendArrayBuffered(Bit8u* data, Bitu bufsize);
+	//bool SendArrayBuffered(Bit8u* data, Bitu bufsize);
 
 	private:
-	TCPsocket mysock;
-	SDLNet_SocketSet listensocketset;
+	TCPsocket mysock = 0;
+	SDLNet_SocketSet listensocketset = 0;
 
 	// Items for send buffering
 	Bitu sendbuffersize;
