@@ -528,7 +528,10 @@ bool localFile::LockFile(Bit8u mode, Bit32u pos, Bit32u size) {
 
 #else // UNIX
 
-// TODO(rushfan): Implement *NIX style locking here.
+bool localFile::LockFile(Bit8u mode, Bit32u pos, Bit32u size) {
+  // TODO(rushfan): Implement *NIX style locking here.
+}
+
 #endif
 
 bool localFile::Seek(Bit32u * pos,Bit32u type) {
