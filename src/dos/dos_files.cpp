@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2015  The DOSBox Team
+ *  Copyright (C) 2002-2017  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -422,6 +422,19 @@ bool DOS_SeekFile(Bit16u entry,Bit32u * pos,Bit32u type,bool fcb) {
 	return Files[handle]->Seek(pos,type);
 }
 
+/* ert, 20100711: Locking extensions */
+bool DOS_LockFile(Bit16u entry, Bit8u mode, Bit32u pos, Bit32u size) {
+  Bit32u handle = RealHandle(entry);
+  if (handle >= DOS_FILES) {
+    DOS_SetError(DOSERR_INVALID_HANDLE);
+    return false;
+  };
+  if (!Files[handle] || !Files[handle]->IsOpen()) {
+    DOS_SetError(DOSERR_INVALID_HANDLE);
+    return false;
+  };
+  return Files[handle]->LockFile(mode, pos, size);
+}
 bool DOS_CloseFile(Bit16u entry, bool fcb) {
 	Bit32u handle = fcb?entry:RealHandle(entry);
 	if (handle>=DOS_FILES) {

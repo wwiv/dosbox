@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2015  The DOSBox Team
+ *  Copyright (C) 2002-2017  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -104,10 +104,10 @@ void MIDI_RawOutByte(Bit8u data) {
 		midi.rt_buf[0]=data;
 		midi.handler->PlayMsg(midi.rt_buf);
 		return;
-	}	 
+	}
 	/* Test for a active sysex tranfer */
 	if (midi.status==0xf0) {
-		if (!(data&0x80)) { 
+		if (!(data&0x80)) {
 			if (midi.sysex.used<(SYSEX_SIZE-1)) midi.sysex.buf[midi.sysex.used++] = data;
 			return;
 		} else {
@@ -130,7 +130,7 @@ void MIDI_RawOutByte(Bit8u data) {
 				}
 			}
 
-			LOG(LOG_ALL,LOG_NORMAL)("Sysex message size %d",midi.sysex.used);
+			LOG(LOG_ALL,LOG_NORMAL)("Sysex message size %d", static_cast<int>(midi.sysex.used));
 			if (CaptureState & CAPTURE_MIDI) {
 				CAPTURE_AddMidi( true, midi.sysex.used-1, &midi.sysex.buf[1]);
 			}
@@ -175,7 +175,7 @@ public:
 		if (fullconf.find("delaysysex") != std::string::npos) {
 			midi.sysex.start = GetTicks();
 			fullconf.erase(fullconf.find("delaysysex"));
-			LOG_MSG("MIDI:Using delayed SysEx processing");
+			LOG_MSG("MIDI: Using delayed SysEx processing");
 		}
 		std::remove(fullconf.begin(), fullconf.end(), ' ');
 		const char * conf = fullconf.c_str();
@@ -187,24 +187,24 @@ public:
 		while (handler) {
 			if (!strcasecmp(dev,handler->GetName())) {
 				if (!handler->Open(conf)) {
-					LOG_MSG("MIDI:Can't open device:%s with config:%s.",dev,conf);	
+					LOG_MSG("MIDI: Can't open device:%s with config:%s.",dev,conf);
 					goto getdefault;
 				}
 				midi.handler=handler;
-				midi.available=true;	
-				LOG_MSG("MIDI:Opened device:%s",handler->GetName());
+				midi.available=true;
+				LOG_MSG("MIDI: Opened device:%s",handler->GetName());
 				return;
 			}
 			handler=handler->next;
 		}
-		LOG_MSG("MIDI:Can't find device:%s, finding default handler.",dev);	
-getdefault:	
+		LOG_MSG("MIDI: Can't find device:%s, finding default handler.",dev);
+getdefault:
 		handler=handler_list;
 		while (handler) {
 			if (handler->Open(conf)) {
-				midi.available=true;	
+				midi.available=true;
 				midi.handler=handler;
-				LOG_MSG("MIDI:Opened device:%s",handler->GetName());
+				LOG_MSG("MIDI: Opened device:%s",handler->GetName());
 				return;
 			}
 			handler=handler->next;

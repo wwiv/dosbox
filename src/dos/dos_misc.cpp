@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2015  The DOSBox Team
+ *  Copyright (C) 2002-2017  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+#include <iostream>
 
 #include "dosbox.h"
 #include "callback.h"
@@ -56,9 +57,31 @@ static Bitu INT2A_Handler(void) {
 	return CBRET_NONE;
 }
 
+// AH of 0x10 is the share status check, so that means AX is 0x1000
+// return values in AL:
+// 0x00 - not installed - ok to install.
+// 0x01 - not installed not ok to install. 
+// 0xFF - installed
+static bool DOS_ShareHandler() {
+  std::cerr << "DOS_ShareHandler; reg_ax = " << std::hex << reg_ax << "; dec=" << std::dec << reg_ax << std::endl;
+  if (reg_ax == 0x1000) {
+    std::cerr << "DOS_ShareHandlerf; returning SHARE installed." << std::endl;
+    reg_ax = 0xffff;
+    return true;
+  } else if (reg_ax = 0x1600) {
+    // Windows Enhanced mode check.
+    std::cerr << "DOS_ShareHandler; returning Windows not installed." << std::endl;
+    reg_ax = 0x8000;
+    return true;
+  }
+
+  std::cerr << "DOS_ShareHandler; returning FALSE" << std::endl;
+  return false;
+}
+
 static bool DOS_MultiplexFunctions(void) {
-	switch (reg_ax) {
-	case 0x1216:	/* GET ADDRESS OF SYSTEM FILE TABLE ENTRY */
+  switch (reg_ax) {
+  case 0x1216:	/* GET ADDRESS OF SYSTEM FILE TABLE ENTRY */
 		// reg_bx is a system file table entry, should coincide with
 		// the file handle so just use that
 		LOG(LOG_DOSMISC,LOG_ERROR)("Some BAD filetable call used bx=%X",reg_bx);
@@ -207,6 +230,7 @@ void DOS_SetupMisc(void) {
 	CALLBACK_Setup(call_int2f,&INT2F_Handler,CB_IRET,"DOS Int 2f");
 	RealSetVec(0x2f,CALLBACK_RealPointer(call_int2f));
 	DOS_AddMultiplexHandler(DOS_MultiplexFunctions);
+  DOS_AddMultiplexHandler(DOS_ShareHandler);
 	/* Setup the dos network interrupt */
 	call_int2a=CALLBACK_Allocate();
 	CALLBACK_Setup(call_int2a,&INT2A_Handler,CB_IRET,"DOS Int 2a");

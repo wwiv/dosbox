@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2015  The DOSBox Team
+ *  Copyright (C) 2002-2017  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -706,7 +706,9 @@ Module::Module( Section* configuration ) : Module_base(configuration) {
 	ctrl.mixer = section->Get_bool("sbmixer");
 
 	mixerChan = mixerObject.Install(OPL_CallBack,rate,"FM");
-	mixerChan->SetScale( 2.0 );
+	//Used to be 2.0, which was measured to be too high. Exact value depends on card/clone.
+	mixerChan->SetScale( 1.5f );  
+
 	if (oplemu == "fast") {
 		handler = new DBOPL::Handler();
 	} else if (oplemu == "compat") {
