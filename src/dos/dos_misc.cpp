@@ -63,19 +63,19 @@ static Bitu INT2A_Handler(void) {
 // 0x01 - not installed not ok to install. 
 // 0xFF - installed
 static bool DOS_ShareHandler() {
-  std::cerr << "DOS_ShareHandler; reg_ax = " << std::hex << reg_ax << "; dec=" << std::dec << reg_ax << std::endl;
+  // std::cerr << "DOS_ShareHandler; reg_ax = " << std::hex << reg_ax << "; dec=" << std::dec << reg_ax << std::endl;
   if (reg_ax == 0x1000) {
-    std::cerr << "DOS_ShareHandlerf; returning SHARE installed." << std::endl;
+    // std::cerr << "DOS_ShareHandlerf; returning SHARE installed." << std::endl;
     reg_ax = 0xffff;
     return true;
   } else if (reg_ax = 0x1600) {
     // Windows Enhanced mode check.
-    std::cerr << "DOS_ShareHandler; returning Windows not installed." << std::endl;
+    // std::cerr << "DOS_ShareHandler; returning Windows not installed." << std::endl;
     reg_ax = 0x8000;
     return true;
   }
 
-  std::cerr << "DOS_ShareHandler; returning FALSE" << std::endl;
+  // std::cerr << "DOS_ShareHandler; returning FALSE" << std::endl;
   return false;
 }
 
